@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NullexGuard — OSINT Intelligence Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080808;--bg2:#0f0f0f;--bg3:#141414;--bg4:#1a1a1a;
+  --border:#1e1e1e;--border2:#252525;--border3:#2e2e2e;
+  --text:#efefef;--text2:#b0b0b0;--muted:#666;--muted2:#3a3a3a;
+  --accent:#00ff88;--accent2:#00cc6a;
+  --red:#ff4455;--amber:#ffaa00;--blue:#4da8ff;--purple:#a78bfa;
+  --mono:'Space Mono',monospace;--sans:'Syne',sans-serif;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:1rem 3rem;border-bottom:1px solid var(--border);background:rgba(8,8,8,0.95);backdrop-filter:blur(16px)}
+.nav-logo{font-family:var(--mono);font-size:.95rem;color:var(--accent);text-decoration:none;letter-spacing:.04em;display:flex;align-items:center;gap:.5rem;cursor:pointer}
+.nav-logo-dot{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pulse 2s infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.nav-links{display:flex;gap:1.75rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;transition:color .2s;cursor:pointer}
+.nav-links a:hover{color:var(--text)}
+.nav-auth,.nav-user{display:flex;align-items:center;gap:.6rem}
+.nav-username{font-family:var(--mono);font-size:.75rem;color:var(--accent);letter-spacing:.04em}
+.btn-ghost{font-family:var(--mono);font-size:.75rem;color:var(--muted);background:transparent;border:1px solid var(--border3);padding:.4rem .9rem;cursor:pointer;letter-spacing:.05em;transition:color .2s,border-color .2s}
+.btn-ghost:hover{color:var(--text);border-color:var(--muted)}
+.btn-primary{font-family:var(--mono);font-size:.75rem;color:var(--bg);background:var(--accent);padding:.4rem 1rem;border:none;cursor:pointer;letter-spacing:.05em;transition:background .2s;font-weight:700}
+.btn-primary:hover{background:var(--accent2)}
+
+/* BANNER */
+.dash-banner{display:none;padding:.5rem 3rem;background:rgba(0,255,136,0.04);border-bottom:1px solid rgba(0,255,136,0.1);font-family:var(--mono);font-size:.68rem;color:var(--muted);letter-spacing:.06em}
+.dash-banner span{color:var(--accent)}
+.dash-banner.visible{display:block}
+
+/* HERO */
+#hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7rem 2rem 4rem;position:relative;text-align:center;overflow:hidden}
+.grid-bg{position:absolute;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(0,255,136,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,136,0.025) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(ellipse 80% 70% at 50% 50%,black 0%,transparent 100%)}
+#hero>*{position:relative;z-index:1}
+.hero-badge{display:inline-flex;align-items:center;gap:.5rem;font-family:var(--mono);font-size:.68rem;color:var(--accent);letter-spacing:.16em;text-transform:uppercase;border:1px solid rgba(0,255,136,0.2);padding:.3rem .8rem;margin-bottom:1.75rem;background:rgba(0,255,136,0.04)}
+.hero-badge-dot{width:5px;height:5px;background:var(--accent);border-radius:50%;animation:pulse 1.5s infinite}
+h1{font-size:clamp(2.8rem,7vw,6rem);font-weight:800;line-height:1.02;letter-spacing:-.03em;margin-bottom:1.25rem}
+h1 em{font-style:normal;color:var(--accent)}
+h1 .dim{color:var(--muted)}
+.hero-sub{max-width:500px;color:var(--muted);font-size:.95rem;line-height:1.8;margin-bottom:2.5rem}
+
+/* SEARCH */
+.search-container{width:100%;max-width:600px;margin-bottom:.75rem}
+.search-box{display:flex;background:var(--bg3);border:1px solid var(--border3);transition:border-color .2s}
+.search-box:focus-within{border-color:var(--accent)}
+.search-input{flex:1;background:transparent;border:none;color:var(--text);font-family:var(--mono);font-size:.875rem;padding:.9rem 1.1rem;outline:none;letter-spacing:.02em}
+.search-input::placeholder{color:var(--muted2)}
+.search-btn{background:var(--accent);color:var(--bg);border:none;padding:0 1.4rem;font-family:var(--mono);font-size:.75rem;font-weight:700;letter-spacing:.1em;cursor:pointer;transition:background .2s;text-transform:uppercase;white-space:nowrap}
+.search-btn:hover{background:var(--accent2)}
+.search-meta{font-family:var(--mono);font-size:.65rem;color:var(--muted2);letter-spacing:.06em}
+.stats-row{display:flex;gap:2.5rem;margin-top:3.5rem;padding-top:2rem;border-top:1px solid var(--border)}
+.stat-item{text-align:center}
+.stat-n{font-family:var(--mono);font-size:1.35rem;color:var(--accent);display:block;font-weight:700}
+.stat-l{font-size:.7rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-top:.1rem}
+
+/* LOADER */
+#loader{display:none;max-width:680px;margin:0 auto;padding:3rem 2rem;text-align:center}
+.loader-track{width:100%;height:1px;background:var(--border);position:relative;overflow:hidden;margin-bottom:1.5rem}
+.loader-track::after{content:'';position:absolute;top:0;left:-50%;width:50%;height:100%;background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:sweep 1.2s linear infinite}
+@keyframes sweep{to{left:150%}}
+.loader-email{font-family:var(--mono);font-size:.8rem;color:var(--accent);margin-bottom:.5rem;letter-spacing:.04em}
+.loader-status{font-family:var(--mono);font-size:.7rem;color:var(--muted);letter-spacing:.08em}
+.loader-steps{display:flex;flex-direction:column;gap:.4rem;margin-top:1.5rem;text-align:left;max-width:320px;margin-left:auto;margin-right:auto}
+.loader-step{font-family:var(--mono);font-size:.68rem;color:var(--muted2);letter-spacing:.05em;display:flex;align-items:center;gap:.6rem;transition:color .3s}
+.loader-step.active{color:var(--accent)}
+.loader-step.done{color:var(--muted)}
+.step-dot{width:4px;height:4px;border-radius:50%;background:currentColor;flex-shrink:0}
+
+/* RESULTS */
+#resultsPage{display:none;max-width:1100px;margin:0 auto;padding:2rem 2rem 6rem}
+.result-topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border)}
+.result-subject{display:flex;align-items:center;gap:1rem}
+.result-avatar-ph{width:52px;height:52px;border-radius:50%;border:2px solid var(--border3);background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0}
+.result-email-label{font-family:var(--mono);font-size:.95rem;color:var(--text);font-weight:700;letter-spacing:.02em}
+.result-meta-row{display:flex;gap:1.25rem;margin-top:.35rem;flex-wrap:wrap}
+.result-meta-item{font-family:var(--mono);font-size:.65rem;color:var(--muted);letter-spacing:.06em}
+.result-meta-item span{color:var(--text2)}
+.result-actions{display:flex;gap:.5rem;align-items:center;flex-shrink:0}
+.action-btn{font-family:var(--mono);font-size:.68rem;color:var(--muted);background:transparent;border:1px solid var(--border3);padding:.35rem .8rem;cursor:pointer;letter-spacing:.05em;transition:all .2s;text-transform:uppercase}
+.action-btn:hover{color:var(--text);border-color:var(--muted)}
+
+/* SUMMARY CARDS */
+.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:1.5rem}
+.summary-card{background:var(--bg2);padding:1.1rem 1.25rem}
+.sc-label{font-family:var(--mono);font-size:.6rem;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;margin-bottom:.4rem}
+.sc-val{font-size:1.4rem;font-weight:800;letter-spacing:-.02em;line-height:1}
+.sc-sub{font-family:var(--mono);font-size:.65rem;color:var(--muted);margin-top:.3rem}
+.v-red{color:var(--red)}.v-green{color:var(--accent)}.v-amber{color:var(--amber)}.v-blue{color:var(--blue)}
+
+/* SECTION BLOCKS */
+.sec-block{background:var(--bg2);border:1px solid var(--border);margin-bottom:1rem;overflow:hidden}
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;cursor:pointer;user-select:none;border-bottom:1px solid transparent;transition:border-color .2s}
+.sec-block.open .sec-hdr{border-bottom-color:var(--border)}
+.sec-hdr-left{display:flex;align-items:center;gap:.75rem}
+.sec-ico{width:28px;height:28px;background:var(--bg3);border:1px solid var(--border3);display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0}
+.sec-title{font-size:.9rem;font-weight:700;letter-spacing:.01em}
+.sec-sub{font-family:var(--mono);font-size:.65rem;color:var(--muted);margin-top:.1rem;letter-spacing:.04em}
+.sec-hdr-right{display:flex;align-items:center;gap:.75rem}
+.sbadge{font-family:var(--mono);font-size:.62rem;letter-spacing:.05em;padding:.2rem .55rem;border:1px solid;text-transform:uppercase}
+.sb-red{color:var(--red);border-color:rgba(255,68,85,.3);background:rgba(255,68,85,.06)}
+.sb-green{color:var(--accent);border-color:rgba(0,255,136,.3);background:rgba(0,255,136,.06)}
+.sb-amber{color:var(--amber);border-color:rgba(255,170,0,.3);background:rgba(255,170,0,.06)}
+.sb-blue{color:var(--blue);border-color:rgba(77,168,255,.3);background:rgba(77,168,255,.06)}
+.sb-muted{color:var(--muted);border-color:var(--border3);background:transparent}
+.chev{color:var(--muted);font-size:1rem;transition:transform .25s;line-height:1}
+.sec-block.open .chev{transform:rotate(180deg)}
+.sec-body{display:none;padding:1.25rem}
+.sec-block.open .sec-body{display:block}
+
+/* IDENTITY SECTION */
+.identity-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem}
+.id-card{background:var(--bg3);border:1px solid var(--border);padding:.9rem 1rem}
+.id-card-label{font-family:var(--mono);font-size:.6rem;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;margin-bottom:.6rem}
+.id-tag{display:inline-block;font-family:var(--mono);font-size:.72rem;color:var(--text2);background:var(--bg4);border:1px solid var(--border3);padding:.2rem .55rem;margin:.15rem .15rem 0 0;letter-spacing:.03em}
+.id-empty{font-family:var(--mono);font-size:.72rem;color:var(--muted2)}
+
+/* BREACH CARDS */
+.breach-row{background:var(--bg3);border:1px solid var(--border);padding:.85rem 1rem;margin-bottom:.5rem;display:flex;align-items:center;gap:1rem;cursor:pointer;transition:border-color .2s}
+.breach-row:hover,.breach-row.open{border-color:var(--border3)}
+.breach-row-left{flex:1;min-width:0}
+.breach-row-name{font-size:.875rem;font-weight:700;letter-spacing:.01em}
+.breach-row-meta{font-family:var(--mono);font-size:.65rem;color:var(--muted);margin-top:.15rem;letter-spacing:.04em}
+.breach-row-right{display:flex;align-items:center;gap:.75rem;flex-shrink:0}
+.btags{display:flex;gap:.3rem;flex-wrap:wrap}
+.btag{font-family:var(--mono);font-size:.6rem;letter-spacing:.04em;text-transform:uppercase;padding:.15rem .45rem;border:1px solid}
+.bt-pw{color:var(--red);border-color:rgba(255,68,85,.3);background:rgba(255,68,85,.05)}
+.bt-em{color:var(--amber);border-color:rgba(255,170,0,.3);background:rgba(255,170,0,.05)}
+.bt-ph{color:var(--blue);border-color:rgba(77,168,255,.3);background:rgba(77,168,255,.05)}
+.bt-nm{color:var(--purple);border-color:rgba(167,139,250,.3);background:rgba(167,139,250,.05)}
+.bt-us{color:var(--muted);border-color:var(--border3);background:transparent}
+.bt-ip{color:#67e8f9;border-color:rgba(103,232,249,.3);background:rgba(103,232,249,.05)}
+.bt-hsh{color:#f97316;border-color:rgba(249,115,22,.3);background:rgba(249,115,22,.05)}
+.breach-chev{color:var(--muted);font-size:.9rem;transition:transform .2s;flex-shrink:0}
+.breach-row.open .breach-chev{transform:rotate(180deg)}
+.breach-detail{display:none;background:var(--bg4);border:1px solid var(--border);border-top:none;padding:.9rem 1rem;margin-top:-.5rem;margin-bottom:.5rem}
+.breach-row.open+.breach-detail{display:block}
+.bd-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem}
+.bd-item label{font-family:var(--mono);font-size:.58rem;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;display:block;margin-bottom:.15rem}
+.bd-item .bdv{font-family:var(--mono);font-size:.74rem;color:var(--text2)}
+.pw-box{background:var(--bg2);border:1px solid rgba(255,68,85,.2);padding:.8rem 1rem;margin-top:.5rem}
+.pw-box-lbl{font-family:var(--mono);font-size:.6rem;color:var(--red);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.5rem;display:flex;align-items:center;gap:.4rem}
+.pw-line{display:flex;align-items:center;gap:.75rem;font-family:var(--mono);font-size:.82rem}
+.pw-masked{background:rgba(255,68,85,.07);border:1px solid rgba(255,68,85,.15);padding:.3rem .7rem;letter-spacing:.12em;flex:1}
+.pw-masked .r{color:var(--red)}
+.pw-masked .h{color:var(--muted2)}
+.pw-type-lbl{font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;flex-shrink:0}
+.hash-box{background:var(--bg2);border:1px solid rgba(249,115,22,.2);padding:.8rem 1rem;margin-top:.5rem}
+.hash-box-lbl{font-family:var(--mono);font-size:.6rem;color:#f97316;letter-spacing:.12em;text-transform:uppercase;margin-bottom:.4rem}
+.hash-val{font-family:var(--mono);font-size:.72rem;color:var(--muted);word-break:break-all}
+
+/* NO RESULTS */
+.no-result{background:var(--bg2);border:1px solid rgba(0,255,136,.15);padding:3rem;text-align:center}
+.no-result-icon{font-size:2.5rem;display:block;margin-bottom:1rem}
+.no-result-title{font-size:1.2rem;font-weight:800;color:var(--accent);margin-bottom:.5rem}
+.no-result-sub{font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+
+/* ERROR BANNER */
+.error-banner{background:rgba(255,68,85,.06);border:1px solid rgba(255,68,85,.25);padding:1.25rem 1.5rem;margin-bottom:1rem;display:flex;align-items:center;gap:1rem}
+.error-banner-icon{font-size:1.2rem;flex-shrink:0}
+.error-banner-msg{font-family:var(--mono);font-size:.78rem;color:var(--red);letter-spacing:.03em}
+
+/* LANDING */
+#landing{display:block}
+#how,#features{max-width:1100px;margin:0 auto;padding:5rem 2rem;border-top:1px solid var(--border)}
+.s-eye{font-family:var(--mono);font-size:.68rem;color:var(--accent);letter-spacing:.2em;text-transform:uppercase;margin-bottom:.75rem}
+.s-h2{font-size:clamp(1.8rem,3.5vw,2.8rem);font-weight:800;letter-spacing:-.02em;line-height:1.1;margin-bottom:.5rem}
+.s-h2 em{font-style:italic;color:var(--muted)}
+.how-steps{margin-top:2.5rem}
+.how-step{display:grid;grid-template-columns:64px 1fr;gap:1.5rem;padding:1.75rem 0;border-bottom:1px solid var(--border);align-items:start}
+.how-num{font-family:var(--mono);font-size:2rem;font-weight:700;color:var(--border3);line-height:1}
+.how-title{font-size:1rem;font-weight:700;margin-bottom:.4rem}
+.how-desc{color:var(--muted);font-size:.85rem;line-height:1.75}
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);margin-top:2.5rem;border:1px solid var(--border)}
+.feat-card{background:var(--bg);padding:1.75rem}
+.feat-num{font-family:var(--mono);font-size:.65rem;color:var(--muted2);letter-spacing:.1em;margin-bottom:1rem}
+.feat-title{font-size:.95rem;font-weight:700;margin-bottom:.6rem}
+.feat-desc{font-size:.82rem;color:var(--muted);line-height:1.7}
+
+footer{border-top:1px solid var(--border);padding:1.75rem 3rem;display:flex;align-items:center;justify-content:space-between}
+.footer-logo{font-family:var(--mono);font-size:.82rem;color:var(--accent)}
+.footer-links{display:flex;gap:1.5rem}
+.footer-links a{font-family:var(--mono);font-size:.65rem;color:var(--muted);text-decoration:none;letter-spacing:.05em;transition:color .2s}
+.footer-links a:hover{color:var(--text)}
+
+/* AUTH MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.85);align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border3);width:100%;max-width:400px;padding:2.25rem;position:relative;animation:mIn .2s ease}
+@keyframes mIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.modal-close{position:absolute;top:1.1rem;right:1.1rem;background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;font-family:var(--mono);transition:color .15s}
+.modal-close:hover{color:var(--text)}
+.modal-eye{font-family:var(--mono);font-size:.62rem;color:var(--accent);letter-spacing:.2em;text-transform:uppercase;margin-bottom:.4rem}
+.modal-title{font-size:1.5rem;font-weight:800;letter-spacing:-.02em;margin-bottom:.3rem}
+.modal-switch{font-size:.78rem;color:var(--muted);margin-bottom:1.75rem}
+.modal-switch button{background:none;border:none;color:var(--accent);font-size:.78rem;cursor:pointer;font-family:var(--sans);text-decoration:underline;padding:0}
+.mfield{margin-bottom:.9rem}
+.mfield label{display:block;font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem}
+.mfield input{width:100%;background:var(--bg3);border:1px solid var(--border3);color:var(--text);font-family:var(--mono);font-size:.82rem;padding:.65rem .9rem;outline:none;transition:border-color .2s}
+.mfield input:focus{border-color:var(--accent)}
+.mfield input::placeholder{color:var(--muted2)}
+.mfield-row{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.form-err{font-family:var(--mono);font-size:.67rem;color:var(--red);min-height:1rem;margin-bottom:.4rem;letter-spacing:.03em}
+.form-submit{width:100%;background:var(--accent);color:var(--bg);border:none;padding:.8rem;font-family:var(--mono);font-size:.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:background .2s;margin-top:.2rem}
+.form-submit:hover{background:var(--accent2)}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo" onclick="showLanding()"><span class="nav-logo-dot"></span>NullexGuard</div>
+  <ul class="nav-links">
+    <li><a onclick="showLanding()">How It Works</a></li>
+    <li><a onclick="showLanding()">Features</a></li>
+  </ul>
+  <div class="nav-auth" id="navAuth">
+    <button class="btn-ghost" onclick="openModal('login')">Log In</button>
+    <button class="btn-primary" onclick="openModal('signup')">Sign Up →</button>
+  </div>
+  <div class="nav-user" id="navUser" style="display:none">
+    <span class="nav-username" id="navUsername"></span>
+    <button class="btn-ghost" onclick="doLogout()">Log Out</button>
+  </div>
+</nav>
+
+<div class="dash-banner" id="dashBanner">
+  // signed in as <span id="bannerEmail"></span> &mdash; monitoring active
+</div>
+
+<!-- LANDING -->
+<div id="landing">
+  <section id="hero">
+    <div class="grid-bg"></div>
+    <div class="hero-badge"><span class="hero-badge-dot"></span>OSINT Intelligence Platform</div>
+    <h1>From email<br>to <em>full identity</em><br><span class="dim">in seconds.</span></h1>
+    <p class="hero-sub">Search across 40B+ records. Uncover linked accounts, breach history, and digital footprints — all from a single email address.</p>
+    <div class="search-container">
+      <div class="search-box">
+        <input class="search-input" type="email" id="emailInput" placeholder="enter email address to investigate..." autocomplete="off" />
+        <button class="search-btn" onclick="runSearch()">Investigate →</button>
+      </div>
+    </div>
+    <p class="search-meta">// powered by Dehashed &mdash; real breach intelligence</p>
+    <div class="stats-row">
+      <div class="stat-item"><span class="stat-n">40B+</span><span class="stat-l">Data Records</span></div>
+      <div class="stat-item"><span class="stat-n">Real‑Time</span><span class="stat-l">Dehashed API</span></div>
+      <div class="stat-item"><span class="stat-n">&lt;5s</span><span class="stat-l">Avg Lookup</span></div>
+      <div class="stat-item"><span class="stat-n">Live</span><span class="stat-l">Breach Data</span></div>
+    </div>
+  </section>
+
+  <section id="how">
+    <p class="s-eye">// process</p>
+    <h2 class="s-h2">From email to intelligence —<br><em>in seconds.</em></h2>
+    <div class="how-steps">
+      <div class="how-step"><div class="how-num">01</div><div><div class="how-title">Enter an email</div><div class="how-desc">Input any email address. NullexGuard hashes the query and fires it against the Dehashed API — one of the largest breach intelligence databases available.</div></div></div>
+      <div class="how-step"><div class="how-num">02</div><div><div class="how-title">Breach cross-reference</div><div class="how-desc">Results are pulled from 40B+ records across thousands of known breach sources — from massive dumps like RockYou and Collection #1 to targeted site breaches.</div></div></div>
+      <div class="how-step"><div class="how-num">03</div><div><div class="how-title">Identity enrichment</div><div class="how-desc">We extract and deduplicate associated usernames, names, phone numbers, IP addresses, and physical addresses discovered across all breach entries.</div></div></div>
+      <div class="how-step"><div class="how-num">04</div><div><div class="how-title">Credential signals</div><div class="how-desc">Where passwords appear in breach data, we show a partial reveal — first and last character only — letting you confirm exposure without surfacing usable credentials.</div></div></div>
+    </div>
+  </section>
+
+  <section id="features">
+    <p class="s-eye">// capabilities</p>
+    <h2 class="s-h2">Built for serious<br><em>OSINT work.</em></h2>
+    <div class="feat-grid">
+      <div class="feat-card"><div class="feat-num">01 —</div><div class="feat-title">Live Dehashed Lookups</div><div class="feat-desc">Every search hits the Dehashed API in real time — no cached or stale data. You're querying 40B+ breach records live.</div></div>
+      <div class="feat-card"><div class="feat-num">02 —</div><div class="feat-title">Breach Source Grouping</div><div class="feat-desc">Results are grouped by breach origin, so you can see exactly which databases exposed the email and what data each one contained.</div></div>
+      <div class="feat-card"><div class="feat-num">03 —</div><div class="feat-title">Identity Extraction</div><div class="feat-desc">Usernames, real names, phone numbers, IP addresses, and physical addresses are extracted and deduplicated across all breach entries automatically.</div></div>
+      <div class="feat-card"><div class="feat-num">04 —</div><div class="feat-title">Credential Hints</div><div class="feat-desc">Partial password reveals (first + last char) let you confirm credential exposure without displaying usable plaintext passwords to anyone.</div></div>
+      <div class="feat-card"><div class="feat-num">05 —</div><div class="feat-title">Hash Intelligence</div><div class="feat-desc">Leaked hashed passwords are captured and surfaced — useful for identifying hash types and assessing cracking risk during security assessments.</div></div>
+      <div class="feat-card"><div class="feat-num">06 —</div><div class="feat-title">Clean UI</div><div class="feat-desc">Expandable breach cards, summary stats, and identity panels make it easy to triage exposure quickly without wading through raw API output.</div></div>
+    </div>
+  </section>
+</div>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-track"></div>
+  <div class="loader-email" id="loaderEmail"></div>
+  <div class="loader-status" id="loaderStatus">// initializing...</div>
+  <div class="loader-steps">
+    <div class="loader-step" id="lstep0"><span class="step-dot"></span>connecting to Dehashed API</div>
+    <div class="loader-step" id="lstep1"><span class="step-dot"></span>querying 40B+ breach records</div>
+    <div class="loader-step" id="lstep2"><span class="step-dot"></span>grouping by breach source</div>
+    <div class="loader-step" id="lstep3"><span class="step-dot"></span>extracting identity signals</div>
+    <div class="loader-step" id="lstep4"><span class="step-dot"></span>processing credential data</div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div id="resultsPage"></div>
+
+<footer>
+  <div class="footer-logo">NG://NullexGuard</div>
+  <div class="footer-links">
+    <a href="#">Terms of Service</a>
+    <a href="#">Privacy Policy</a>
+    <a href="#">Compliance</a>
+  </div>
+</footer>
+
+<!-- AUTH MODAL -->
+<div class="modal-overlay" id="authOverlay" onclick="overlayClick(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">&#x2715;</button>
+    <div id="loginPanel">
+      <div class="modal-eye">// access</div>
+      <div class="modal-title">Log In</div>
+      <div class="modal-switch">No account? <button onclick="showPanel('signup')">Sign up free</button></div>
+      <div class="mfield"><label>Email</label><input type="email" id="liEmail" placeholder="you@example.com" /></div>
+      <div class="mfield"><label>Password</label><input type="password" id="liPass" placeholder="password" onkeydown="if(event.key==='Enter')doLogin()" /></div>
+      <div class="form-err" id="liErr"></div>
+      <button class="form-submit" onclick="doLogin()">Log In &#x2192;</button>
+    </div>
+    <div id="signupPanel" style="display:none">
+      <div class="modal-eye">// new account</div>
+      <div class="modal-title">Sign Up</div>
+      <div class="modal-switch">Already have an account? <button onclick="showPanel('login')">Log in</button></div>
+      <div class="mfield-row">
+        <div class="mfield"><label>First Name</label><input type="text" id="suFirst" placeholder="First" /></div>
+        <div class="mfield"><label>Last Name</label><input type="text" id="suLast" placeholder="Last" /></div>
+      </div>
+      <div class="mfield"><label>Email</label><input type="email" id="suEmail" placeholder="you@example.com" /></div>
+      <div class="mfield"><label>Password</label><input type="password" id="suPass" placeholder="min. 8 characters" /></div>
+      <div class="mfield"><label>Confirm Password</label><input type="password" id="suPass2" placeholder="repeat password" onkeydown="if(event.key==='Enter')doSignup()" /></div>
+      <div class="form-err" id="suErr"></div>
+      <button class="form-submit" onclick="doSignup()">Create Account &#x2192;</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var API_BASE = window.location.origin; // same origin since backend serves frontend
+
+// ── SEARCH ──────────────────────────────────────────────────────────────
+async function runSearch() {
+  var input = document.getElementById('emailInput');
+  var email = input.value.trim().toLowerCase();
+  if (!email || !email.includes('@')) {
+    input.style.borderColor = 'var(--red)';
+    setTimeout(function(){ input.style.borderColor = ''; }, 1000);
+    return;
+  }
+
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('resultsPage').style.display = 'none';
+  document.getElementById('resultsPage').innerHTML = '';
+
+  // reset loader steps
+  for (var i = 0; i < 5; i++) {
+    var s = document.getElementById('lstep' + i);
+    s.classList.remove('active','done');
+  }
+
+  var loader = document.getElementById('loader');
+  loader.style.display = 'block';
+  document.getElementById('loaderEmail').textContent = '// investigating: ' + email;
+
+  var steps    = ['lstep0','lstep1','lstep2','lstep3','lstep4'];
+  var statuses = ['// connecting to Dehashed API...','// querying 40B+ records...','// grouping by breach source...','// extracting identity signals...','// processing credential data...'];
+
+  // Animate steps while fetch runs in parallel
+  var stepIdx = 0;
+  var stepInterval = setInterval(function() {
+    if (stepIdx > 0) document.getElementById(steps[stepIdx-1]).classList.replace('active','done');
+    if (stepIdx < steps.length) {
+      document.getElementById(steps[stepIdx]).classList.add('active');
+      document.getElementById('loaderStatus').textContent = statuses[stepIdx];
+      stepIdx++;
+    }
+  }, 500);
+
+  try {
+    var resp = await fetch(API_BASE + '/api/lookup?email=' + encodeURIComponent(email));
+    var data = await resp.json();
+
+    clearInterval(stepInterval);
+    // finish remaining steps visually
+    for (var j = stepIdx-1; j < steps.length; j++) {
+      document.getElementById(steps[j]).classList.add('done');
+      document.getElementById(steps[j]).classList.remove('active');
+    }
+    await delay(300);
+    loader.style.display = 'none';
+
+    if (!resp.ok) {
+      renderError(email, data.error || 'Lookup failed.');
+    } else {
+      renderResults(email, data);
+    }
+
+  } catch(err) {
+    clearInterval(stepInterval);
+    loader.style.display = 'none';
+    renderError(email, 'Could not reach the NullexGuard backend. Make sure the server is running on port 3001.');
+  }
+}
+
+function delay(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+document.getElementById('emailInput').addEventListener('keydown', function(e){ if(e.key==='Enter') runSearch(); });
+
+// ── RENDER ERROR ─────────────────────────────────────────────────────────
+function renderError(email, msg) {
+  var rp = document.getElementById('resultsPage');
+  rp.style.display = 'block';
+  rp.innerHTML = '<div style="max-width:680px;margin:2rem auto;padding:0 1rem">'
+    + '<div class="error-banner"><div class="error-banner-icon">&#x26A0;</div>'
+    + '<div class="error-banner-msg">// ' + esc(msg) + '</div></div>'
+    + '<div style="text-align:center;margin-top:1.5rem">'
+    + '<button class="action-btn" onclick="showLanding()">&#x2190; Back to Search</button>'
+    + '</div></div>';
+  rp.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ── RENDER RESULTS ───────────────────────────────────────────────────────
+function renderResults(email, d) {
+  var rp = document.getElementById('resultsPage');
+  rp.style.display = 'block';
+
+  if (!d.breachCount || d.breachCount === 0) {
+    rp.innerHTML = '<div style="max-width:680px;margin:2rem auto;padding:0 1rem">'
+      + '<div class="no-result">'
+      + '<span class="no-result-icon">&#x2713;</span>'
+      + '<div class="no-result-title">No breaches found.</div>'
+      + '<p class="no-result-sub">// ' + esc(email) + ' was not found in the Dehashed database</p>'
+      + '</div>'
+      + '<div style="text-align:center;margin-top:1.5rem"><button class="action-btn" onclick="showLanding()">&#x2190; New Search</button></div>'
+      + '</div>';
+    rp.scrollIntoView({behavior:'smooth',block:'start'});
+    return;
+  }
+
+  var id       = d.identity || {};
+  var breaches = d.breaches || [];
+  var hasLeakedPw = d.hasLeakedPw || false;
+  var risk = d.breachCount >= 5 ? 'Critical' : d.breachCount >= 2 ? 'High' : 'Medium';
+  var riskColor = d.breachCount >= 5 ? 'v-red' : 'v-amber';
+
+  var html = '';
+
+  // TOP BAR
+  html += '<div class="result-topbar">';
+  html += '<div class="result-subject">';
+  html += '<div class="result-avatar-ph">&#x1F50D;</div>';
+  html += '<div>';
+  html += '<div class="result-email-label">' + esc(email) + '</div>';
+  html += '<div class="result-meta-row">';
+  html += '<div class="result-meta-item">Breach sources <span>' + d.breachCount + '</span></div>';
+  html += '<div class="result-meta-item">Total records <span>' + (d.total || d.entryCount || 0) + '</span></div>';
+  html += '<div class="result-meta-item">Credentials leaked <span style="color:' + (hasLeakedPw?'var(--red)':'var(--accent)') + '">' + (hasLeakedPw?'Yes':'No') + '</span></div>';
+  html += '</div></div></div>';
+  html += '<div class="result-actions"><button class="action-btn" onclick="showLanding()">&#x2190; New Search</button></div>';
+  html += '</div>';
+
+  // SUMMARY CARDS
+  html += '<div class="summary-grid">';
+  html += '<div class="summary-card"><div class="sc-label">Breach Sources</div><div class="sc-val v-red">' + d.breachCount + '</div><div class="sc-sub">' + (d.total||0) + ' total records</div></div>';
+  html += '<div class="summary-card"><div class="sc-label">Usernames Found</div><div class="sc-val v-blue">' + (id.usernames?id.usernames.length:0) + '</div><div class="sc-sub">unique identifiers</div></div>';
+  html += '<div class="summary-card"><div class="sc-label">Exposure Risk</div><div class="sc-val ' + riskColor + '">' + risk + '</div><div class="sc-sub">' + (hasLeakedPw?'credentials exposed':'no plaintext pw') + '</div></div>';
+  html += '<div class="summary-card"><div class="sc-label">Data Types</div><div class="sc-val v-amber">' + countDataTypes(breaches) + '</div><div class="sc-sub">categories leaked</div></div>';
+  html += '</div>';
+
+  // IDENTITY SECTION
+  html += makeSection('identity','&#x1F9E0;','Identity Signals','Extracted from breach records','<span class="sbadge sb-blue">' + totalIdentityHits(id) + ' signals</span>', true, function(){
+    var b = '<div class="identity-grid">';
+    b += idCard('Usernames', id.usernames);
+    b += idCard('Real Names', id.names);
+    b += idCard('Phone Numbers', id.phones);
+    b += idCard('IP Addresses', id.ips);
+    b += idCard('Physical Addresses', id.addresses);
+    b += idCard('Password Hashes', id.hashes ? id.hashes.map(function(h){ return h.substring(0,20)+'...'; }) : []);
+    b += '</div>';
+    return b;
+  });
+
+  // BREACHES
+  html += makeSection('breaches','&#x26A0;','Data Breaches', d.breachCount + ' sources — ' + (d.total||0) + ' records total','<span class="sbadge sb-red">' + d.breachCount + ' breaches</span>', true, function(){
+    var b = '';
+    breaches.forEach(function(br, idx){
+      b += '<div class="breach-row" id="br-'+idx+'" onclick="toggleBreach('+idx+')">';
+      b += '<div class="breach-row-left">';
+      b += '<div class="breach-row-name">' + esc(br.name) + '</div>';
+      b += '<div class="breach-row-meta">// ' + br.count + ' record' + (br.count!==1?'s':'') + ' matched</div>';
+      b += '</div>';
+      b += '<div class="breach-row-right">';
+      b += '<div class="btags">' + br.types.map(function(t){ return tagHTML(t); }).join('') + '</div>';
+      b += '<div class="breach-chev">&#x2304;</div>';
+      b += '</div></div>';
+
+      // Detail panel
+      b += '<div class="breach-detail" id="brd-'+idx+'">';
+      b += '<div class="bd-grid">';
+      b += '<div class="bd-item"><label>Breach Source</label><div class="bdv">' + esc(br.name) + '</div></div>';
+      b += '<div class="bd-item"><label>Records Matched</label><div class="bdv">' + br.count + '</div></div>';
+      b += '<div class="bd-item" style="grid-column:1/-1"><label>Data Types Exposed</label><div class="bdv">' + br.types.join(', ') + '</div></div>';
+      if (br.sampleUser) b += '<div class="bd-item" style="grid-column:1/-1"><label>Sample Username</label><div class="bdv">' + esc(br.sampleUser) + '</div></div>';
+      b += '</div>';
+
+      if (br.password) {
+        b += '<div class="pw-box">';
+        b += '<div class="pw-box-lbl">&#x26A0; plaintext password found in breach</div>';
+        b += '<div class="pw-line">';
+        b += '<div class="pw-masked"><span class="r">' + esc(br.password.first) + '</span><span class="h">' + '\u2022'.repeat(Math.max(0, br.password.length-2)) + '</span><span class="r">' + esc(br.password.last) + '</span></div>';
+        b += '<div class="pw-type-lbl">leaked pw &mdash; partial only</div>';
+        b += '</div></div>';
+      }
+      if (br.hashedPw) {
+        b += '<div class="hash-box">';
+        b += '<div class="hash-box-lbl">&#x1F511; hashed password (truncated)</div>';
+        b += '<div class="hash-val">' + esc(br.hashedPw) + '</div>';
+        b += '</div>';
+      }
+      b += '</div>';
+    });
+    return b;
+  });
+
+  rp.innerHTML = html;
+  rp.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ── HELPERS ──────────────────────────────────────────────────────────────
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function tagHTML(type) {
+  var map = {
+    password:   '<span class="btag bt-pw">password</span>',
+    email:      '<span class="btag bt-em">email</span>',
+    phone:      '<span class="btag bt-ph">phone</span>',
+    name:       '<span class="btag bt-nm">name</span>',
+    username:   '<span class="btag bt-us">username</span>',
+    address:    '<span class="btag bt-us">address</span>',
+    ip_address: '<span class="btag bt-ip">ip</span>',
+    hashed_pw:  '<span class="btag bt-hsh">hash</span>',
+  };
+  return map[type] || '<span class="btag bt-us">' + esc(type) + '</span>';
+}
+
+function idCard(label, arr) {
+  var b = '<div class="id-card"><div class="id-card-label">' + label + '</div>';
+  if (!arr || arr.length === 0) {
+    b += '<div class="id-empty">none found</div>';
+  } else {
+    arr.slice(0, 8).forEach(function(v){ b += '<span class="id-tag">' + esc(v) + '</span>'; });
+    if (arr.length > 8) b += '<span class="id-tag">+' + (arr.length-8) + ' more</span>';
+  }
+  return b + '</div>';
+}
+
+function totalIdentityHits(id) {
+  return (id.usernames||[]).length + (id.names||[]).length + (id.phones||[]).length + (id.ips||[]).length + (id.addresses||[]).length;
+}
+
+function countDataTypes(breaches) {
+  var types = new Set();
+  breaches.forEach(function(b){ b.types.forEach(function(t){ types.add(t); }); });
+  return types.size;
+}
+
+function makeSection(id, icon, title, subtitle, badge, openByDefault, contentFn) {
+  var cls = openByDefault ? ' open' : '';
+  return '<div class="sec-block' + cls + '" id="sec-' + id + '">'
+    + '<div class="sec-hdr" onclick="toggleSection(\'sec-' + id + '\')">'
+    + '<div class="sec-hdr-left">'
+    + '<div class="sec-ico">' + icon + '</div>'
+    + '<div><div class="sec-title">' + title + '</div><div class="sec-sub">' + subtitle + '</div></div>'
+    + '</div>'
+    + '<div class="sec-hdr-right">' + badge + '<div class="chev">&#x2304;</div></div>'
+    + '</div>'
+    + '<div class="sec-body">' + contentFn() + '</div>'
+    + '</div>';
+}
+
+function toggleSection(id) { document.getElementById(id).classList.toggle('open'); }
+function toggleBreach(idx) { document.getElementById('br-'+idx).classList.toggle('open'); }
+
+// ── ROUTING ──────────────────────────────────────────────────────────────
+function showLanding() {
+  document.getElementById('landing').style.display = 'block';
+  document.getElementById('resultsPage').style.display = 'none';
+  document.getElementById('loader').style.display = 'none';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── AUTH ─────────────────────────────────────────────────────────────────
+var users = {};
+var currentUser = null;
+
+function openModal(panel) { document.getElementById('authOverlay').classList.add('open'); showPanel(panel); }
+function closeModal() { document.getElementById('authOverlay').classList.remove('open'); clearFields(); }
+function overlayClick(e) { if(e.target===document.getElementById('authOverlay')) closeModal(); }
+function showPanel(p) {
+  document.getElementById('loginPanel').style.display  = p==='login'  ? 'block' : 'none';
+  document.getElementById('signupPanel').style.display = p==='signup' ? 'block' : 'none';
+  clearFields();
+}
+function clearFields() {
+  ['liEmail','liPass','suFirst','suLast','suEmail','suPass','suPass2'].forEach(function(id){ var el=document.getElementById(id);if(el)el.value=''; });
+  ['liErr','suErr'].forEach(function(id){ var el=document.getElementById(id);if(el)el.textContent=''; });
+}
+function doSignup() {
+  var first=document.getElementById('suFirst').value.trim();
+  var last=document.getElementById('suLast').value.trim();
+  var email=document.getElementById('suEmail').value.trim().toLowerCase();
+  var pass=document.getElementById('suPass').value;
+  var pass2=document.getElementById('suPass2').value;
+  var err=document.getElementById('suErr');
+  if(!first||!last){err.textContent='// name is required';return;}
+  if(!email.includes('@')){err.textContent='// enter a valid email';return;}
+  if(users[email]){err.textContent='// account already exists';return;}
+  if(pass.length<8){err.textContent='// password must be 8+ characters';return;}
+  if(pass!==pass2){err.textContent='// passwords do not match';return;}
+  users[email]={first:first,last:last,email:email,pass:pass};
+  loginUser(email,first);
+}
+function doLogin() {
+  var email=document.getElementById('liEmail').value.trim().toLowerCase();
+  var pass=document.getElementById('liPass').value;
+  var err=document.getElementById('liErr');
+  if(!email.includes('@')){err.textContent='// enter a valid email';return;}
+  if(!users[email]){err.textContent='// no account found';return;}
+  if(users[email].pass!==pass){err.textContent='// incorrect password';return;}
+  loginUser(email,users[email].first);
+}
+function loginUser(email,firstName) {
+  currentUser=email;
+  closeModal();
+  document.getElementById('navAuth').style.display='none';
+  document.getElementById('navUser').style.display='flex';
+  document.getElementById('navUsername').textContent='// '+firstName.toLowerCase();
+  document.getElementById('dashBanner').classList.add('visible');
+  document.getElementById('bannerEmail').textContent=email;
+  document.getElementById('emailInput').value=email;
+}
+function doLogout() {
+  currentUser=null;
+  document.getElementById('navAuth').style.display='flex';
+  document.getElementById('navUser').style.display='none';
+  document.getElementById('dashBanner').classList.remove('visible');
+  document.getElementById('emailInput').value='';
+  showLanding();
+}
+</script>
+</body>
+</html>
